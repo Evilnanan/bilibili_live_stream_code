@@ -64,6 +64,15 @@ export const useBridge = () => {
       callPy('window_drag', targetX, targetY);
     },
 
+    async getWindowSize() {
+      const res = await callPy('get_window_size');
+      return res.code === 0 ? res.data : { width: 1000, height: 720 };
+    },
+
+    windowResize(width, height) {
+      callPy('window_resize', Math.round(width), Math.round(height));
+    },
+
     // 加载配置
     async loadSavedConfig() {
       const res = await callPy('load_saved_config');

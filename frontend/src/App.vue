@@ -12,7 +12,7 @@ import MessageModal from '@/components/MessageModal.vue';
 import UserAccountModal from '@/components/UserAccountModal.vue';
 import WindowControls from '@/components/WindowControls.vue';
 
-const { loadSavedConfig, getWindowPosition, windowDrag, refreshCurrentUser } = useBridge();
+const { loadSavedConfig, getWindowPosition, windowDrag, windowResize, getWindowSize, refreshCurrentUser } = useBridge();
 const activeTab = ref('account');
 const isInitializing = ref(true);
 
@@ -89,6 +89,66 @@ const handlePointerUp = (event) => {
   // [关键] 释放指针捕获
   if (event.target.hasPointerCapture && event.target.hasPointerCapture(event.pointerId)) {
     event.target.releasePointerCapture(event.pointerId);
+  }
+};
+// --- 结束 ---
+
+// --- 窗口大小调整逻辑 ---
+const MIN_WIDTH = 600;
+const MIN_HEIGHT = 400;
+const resizeState = ref({
+  active: false,
+  edge: '', // 'right', 'bottom', 'bottom-right'
+  initialX: 0,
+  initialY: 0,
+  initialW: 0,
+  initialH: 0,
+  initialWinX: 0,
+  initialWinY: 0,
+});
+
+const handleResizePointerDown = async (event, edge) => {
+  event.preventDefault();
+  const [size, pos] = await Promise.all([getWindowSize(), getWindowPosition()]);
+  resizeState.value = {
+    active: true,
+    edge,
+    initialX: event.screenX,
+    initialY: event.screenY,
+    initialW: size.width,
+    initialH: size.height,
+    initialWinX: pos.x,
+    initialWinY: pos.y,
+  };
+  event.target.setPointerCapture(event.pointerId);
+};
+
+const handleResizePointerMove = (event) => {
+  if (!resizeState.value.active) return;
+  if (!event.target.hasPointerCapture || !event.target.hasPointerCapture(event.pointerId)) return;
+
+  const dx = event.screenX - resizeState.value.initialX;
+  const dy = event.screenY - resizeState.value.initialY;
+
+  let newW = resizeState.value.initialW;
+  let newH = resizeState.value.initialH;
+  let newX = resizeState.value.initialWinX;
+  let newY = resizeState.value.initialWinY;
+
+  if (resizeState.value.edge.includes('right')) {
+    newW = Math.max(MIN_WIDTH, resizeState.value.initialW + dx);
+  }
+  if (resizeState.value.edge.includes('bottom')) {
+    newH = Math.max(MIN_HEIGHT, resizeState.value.initialH + dy);
+  }
+
+  windowResize(newW, newH);
+};
+
+const handleResizePointerUp = (event) => {
+  if (resizeState.value.active && event.target.hasPointerCapture && event.target.hasPointerCapture(event.pointerId)) {
+    event.target.releasePointerCapture(event.pointerId);
+    resizeState.value.active = false;
   }
 };
 // --- 结束 ---
@@ -212,6 +272,11 @@ const handleSidebarAccountClick = () => {
       </main>
     </div>
 
+    <!-- 窗口大小调整把手 -->
+    <div class="resize-right"  @pointerdown.prevent="e => handleResizePointerDown(e, 'right')"  @pointermove="handleResizePointerMove" @pointerup="handleResizePointerUp"></div>
+    <div class="resize-bottom" @pointerdown.prevent="e => handleResizePointerDown(e, 'bottom')" @pointermove="handleResizePointerMove" @pointerup="handleResizePointerUp"></div>
+    <div class="resize-bottom-right" @pointerdown.prevent="e => handleResizePointerDown(e, 'bottom-right')" @pointermove="handleResizePointerMove" @pointerup="handleResizePointerUp"></div>
+
     <MessageModal :visible="modalState.visible" :title="modalState.title" :content="modalState.content" :type="modalState.type" @close="modalState.visible = false" />
     <UserAccountModal v-if="showAccountManager" :visible="showAccountManager" :current-user="userInfo" @close="showAccountManager = false" @switch="onSwitchAccount" @logout="onLogout" />
 
@@ -276,4 +341,18 @@ const handleSidebarAccountClick = () => {
 .tray-qr-loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #999; }
 .tray-verify-tip { padding: 0 20px; margin: 20px 0; font-size: 14px; color: #444; text-align: center; }
 .tray-verify-done { width: calc(100% - 40px); margin: 0 20px 20px 20px; height: 44px; }
+
+/* 窗口大小调整把手 */
+.resize-right {
+  position: fixed; top: 0; right: 0; width: 5px; height: 100%;
+  cursor: ew-resize; z-index: 9998;
+}
+.resize-bottom {
+  position: fixed; bottom: 0; left: 0; width: 100%; height: 5px;
+  cursor: ns-resize; z-index: 9998;
+}
+.resize-bottom-right {
+  position: fixed; bottom: 0; right: 0; width: 16px; height: 16px;
+  cursor: nwse-resize; z-index: 9999;
+}
 </style>

@@ -90,6 +90,10 @@ class ApiService:
         return self.window_service.window_close(lambda: self.config_manager.save())
     def get_window_position(self): return self.window_service.get_window_position()
     def window_drag(self, target_x, target_y): return self.window_service.window_drag(target_x, target_y)
+    def window_resize(self, width, height): return self.window_service.window_resize(width, height)
+    def get_window_size(self):
+        size = self.window_service.get_window_size()
+        return {"code": 0, "data": size}
 
     # --- User Proxy Methods ---
     def load_saved_config(self): return self.user_service.load_saved_config()

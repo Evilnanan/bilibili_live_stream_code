@@ -47,6 +47,20 @@ class WindowService:
         if window:
             window.move(target_x, target_y)
 
+    def window_resize(self, width, height):
+        window = self._get_window()
+        if window:
+            # pywebview supports min_size on the window object
+            if hasattr(window, 'min_size'):
+                window.min_size = (600, 400)
+            window.resize(width, height)
+
+    def get_window_size(self):
+        window = self._get_window()
+        if window:
+            return {"width": window.width, "height": window.height}
+        return {"width": 1000, "height": 720}
+
     def send_to_frontend(self, function_name, data):
         """发送数据到前端"""
         window = self._get_window()
